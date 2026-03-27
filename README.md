@@ -1,6 +1,6 @@
 # 📱 Terminal-Ai
 
-AI-powered terminal assistant for Android (Termux) with full bash execution, file management, and multi-provider LLM support.
+AI-powered terminal assistant for Android (Termux) with full bash execution, file management, multi-provider LLM support, and **live voice chat**.
 
 ## ✨ Features
 
@@ -11,6 +11,7 @@ AI-powered terminal assistant for Android (Termux) with full bash execution, fil
 - **📁 File Browser**: Navigate, read, write, delete files
 - **🎨 Themes**: Cyberpunk Void, Monokai Pro, Dracula
 - **📱 Termux Optimized**: Runs entirely on Android
+- **🎙️ Live Voice Chat**: Phone-call style hands-free conversation with natural AI voices
 
 ---
 
@@ -93,7 +94,36 @@ Access Settings tab to configure:
 
 ## 🔄 Changelog
 
-### v2.0.0 (Latest)
+### v2.1.0 (Latest) - Voice Chat Update
+
+#### ✅ New Features
+
+1. **Live Voice Chat** (`Agent.js`)
+   - Phone-call style hands-free conversation
+   - "Live Chat" button activates continuous listening mode
+   - Visual indicators: LIVE badge, listening/speaking status
+   - Auto-sends after 2 seconds of silence
+   - Transcription shown in real-time
+
+2. **Voice Input** (Browser Web Speech API)
+   - Free, works offline on Android
+   - Microphone button for push-to-talk
+   - Real-time transcription to text input
+
+3. **Voice Output** (Edge TTS - Free Natural Voices)
+   - 18+ natural Microsoft voices (US, UK, AU)
+   - Male and female options
+   - Adjustable speech rate (-20% to +30%)
+   - Test voice preview in settings
+
+4. **Voice Settings Tab** (`Settings.js`)
+   - Enable/disable voice output
+   - AI voice selection dropdown
+   - Auto-speak responses toggle
+   - Speech rate controls
+   - Test voice button
+
+### v2.0.0 - Core Features
 
 #### ✅ Completed Tasks
 

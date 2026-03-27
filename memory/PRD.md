@@ -43,6 +43,8 @@ Frontend (React/Expo) ←→ Backend (FastAPI) ←→ AI Providers
 - ✅ Dynamic /chat config - Override provider, api_key, endpoint, model per-request
 - ✅ Playwright/Browser MCP stub - Placeholder ready for expansion
 - ✅ WebSocket reconnect fix - Exponential backoff in terminal-html endpoint
+- ✅ **Edge TTS Integration** - /api/tts/voices and /api/tts/speak endpoints
+- ✅ **Voice Config Storage** - voice_enabled, voice_id, voice_rate, voice_pitch, voice_auto_speak
 
 ### Frontend
 - ✅ Terminal page with xterm.js and WebSocket reconnect backoff
@@ -55,6 +57,15 @@ Frontend (React/Expo) ←→ Backend (FastAPI) ←→ AI Providers
   - Quick select buttons for NIM models
   - Agent name and system prompt
   - Auto-execute toggle
+  - **Voice tab** with voice selection, rate controls, test button
+
+### Voice Chat Features (NEW)
+- ✅ **Live Chat Mode** - Phone-call style hands-free conversation
+- ✅ **Voice Input** - Browser Web Speech API (free, offline)
+- ✅ **Voice Output** - Edge TTS with 18+ natural Microsoft voices
+- ✅ **Real-time Transcription** - Speech shown in input as you talk
+- ✅ **Auto-send on Silence** - Sends message after 2s pause in Live mode
+- ✅ **Visual Indicators** - LIVE badge, listening/speaking status
 
 ### Scripts & Documentation
 - ✅ install-termux.sh - One-line installer for Termux
@@ -77,6 +88,8 @@ Frontend (React/Expo) ←→ Backend (FastAPI) ←→ AI Providers
 | /api/files | GET/DELETE | File browser |
 | /api/files/read | GET | Read file |
 | /api/files/write | POST | Write file |
+| /api/tts/voices | GET | Get available TTS voices |
+| /api/tts/speak | POST | Convert text to speech |
 
 ## Prioritized Backlog
 
