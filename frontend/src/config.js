@@ -16,6 +16,8 @@ export const API_ENDPOINTS = {
   groundingExecute: `${BACKEND_URL}/api/grounding/execute`,
   toolsDispatch: `${BACKEND_URL}/api/tools/dispatch`,
   toolsList: `${BACKEND_URL}/api/tools/list`,
+  ttsVoices: `${BACKEND_URL}/api/tts/voices`,
+  ttsSpeak: `${BACKEND_URL}/api/tts/speak`,
 };
 
 export const WS_URL = BACKEND_URL.replace('http', 'ws') + '/api/ws/terminal';

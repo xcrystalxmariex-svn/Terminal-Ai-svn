@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Trash2, Play, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Trash2, Play, Bot, User, Loader2, Mic, MicOff, Phone, PhoneOff, Volume2, VolumeX } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { API_ENDPOINTS } from '../config';
-import { Button } from '../components/ui/button';
+import { API_ENDPOINTS, BACKEND_URL } from '../config';
 import { useToast } from '../hooks/use-toast';
 
 export default function AgentPage() {
@@ -13,6 +12,20 @@ export default function AgentPage() {
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const messagesEndRef = useRef(null);
+  
+  // Voice chat state
+  const [isListening, setIsListening] = useState(false);
+  const [isLiveMode, setIsLiveMode] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceId, setVoiceId] = useState('en-US-AriaNeural');
+  const [autoSpeak, setAutoSpeak] = useState(true);
+  const [transcript, setTranscript] = useState('');
+  
+  // Refs for speech recognition
+  const recognitionRef = useRef(null);
+  const audioRef = useRef(null);
+  const silenceTimeoutRef = useRef(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -20,11 +33,105 @@ export default function AgentPage() {
 
   useEffect(() => {
     fetchHistory();
+    loadVoiceConfig();
+    initSpeechRecognition();
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
   }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  const loadVoiceConfig = async () => {
+    try {
+      const res = await fetch(API_ENDPOINTS.config);
+      if (res.ok) {
+        const data = await res.json();
+        setVoiceEnabled(data.voice_enabled || false);
+        setVoiceId(data.voice_id || 'en-US-AriaNeural');
+        setAutoSpeak(data.voice_auto_speak !== false);
+      }
+    } catch (e) {
+      console.error('Failed to load voice config:', e);
+    }
+  };
+
+  const initSpeechRecognition = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      console.log('Speech recognition not supported');
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        setTranscript(prev => prev + finalTranscript);
+        // Reset silence timeout
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+        }
+        // Auto-send after 2 seconds of silence in live mode
+        if (isLiveMode) {
+          silenceTimeoutRef.current = setTimeout(() => {
+            const fullTranscript = transcript + finalTranscript;
+            if (fullTranscript.trim()) {
+              sendVoiceMessage(fullTranscript.trim());
+              setTranscript('');
+            }
+          }, 2000);
+        }
+      }
+
+      if (interimTranscript) {
+        setInput(transcript + interimTranscript);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      if (event.error !== 'no-speech') {
+        toast({ title: 'Voice Error', description: event.error, variant: 'destructive' });
+      }
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      if (isLiveMode && isListening) {
+        // Restart recognition in live mode
+        try {
+          recognition.start();
+        } catch (e) {
+          console.log('Recognition restart failed:', e);
+        }
+      } else {
+        setIsListening(false);
+      }
+    };
+
+    recognitionRef.current = recognition;
+  };
 
   const fetchHistory = async () => {
     try {
@@ -40,10 +147,132 @@ export default function AgentPage() {
     }
   };
 
+  const speakText = async (text) => {
+    if (!autoSpeak || isSpeaking) return;
+    
+    // Strip code blocks and clean text for speech
+    const cleanText = text
+      .replace(/```[\s\S]*?```/g, 'Code block omitted.')
+      .replace(/`[^`]+`/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\n+/g, '. ')
+      .slice(0, 1000); // Limit length
+    
+    if (!cleanText.trim()) return;
+
+    setIsSpeaking(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/tts/speak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanText, voice: voiceId }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const audio = new Audio(`data:audio/mpeg;base64,${data.audio}`);
+        audioRef.current = audio;
+        
+        audio.onended = () => {
+          setIsSpeaking(false);
+          // Resume listening in live mode after speaking
+          if (isLiveMode && recognitionRef.current) {
+            try {
+              recognitionRef.current.start();
+              setIsListening(true);
+            } catch (e) {
+              console.log('Could not restart recognition:', e);
+            }
+          }
+        };
+        
+        audio.onerror = () => {
+          setIsSpeaking(false);
+        };
+        
+        // Pause listening while speaking
+        if (recognitionRef.current && isListening) {
+          recognitionRef.current.stop();
+        }
+        
+        await audio.play();
+      }
+    } catch (e) {
+      console.error('TTS error:', e);
+      setIsSpeaking(false);
+    }
+  };
+
+  const stopSpeaking = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsSpeaking(false);
+  };
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      toast({ title: 'Not Supported', description: 'Speech recognition is not available in this browser', variant: 'destructive' });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      // Send accumulated transcript
+      if (transcript.trim()) {
+        setInput(transcript);
+        setTranscript('');
+      }
+    } else {
+      setTranscript('');
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error('Failed to start recognition:', e);
+      }
+    }
+  };
+
+  const toggleLiveMode = () => {
+    if (isLiveMode) {
+      // Exit live mode
+      setIsLiveMode(false);
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      stopSpeaking();
+      setTranscript('');
+    } else {
+      // Enter live mode
+      setIsLiveMode(true);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+          setIsListening(true);
+          toast({ title: 'Live Chat Active', description: 'Speak naturally - I\'m listening!' });
+        } catch (e) {
+          console.error('Failed to start live mode:', e);
+        }
+      }
+    }
+  };
+
+  const sendVoiceMessage = async (text) => {
+    if (!text.trim() || loading) return;
+    await sendMessageInternal(text);
+  };
+
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || loading) return;
+    await sendMessageInternal(text);
+  };
 
+  const sendMessageInternal = async (text) => {
     const userMsg = {
       id: Date.now().toString(),
       role: 'user',
@@ -52,6 +281,7 @@ export default function AgentPage() {
     };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
+    setTranscript('');
     setLoading(true);
 
     try {
@@ -66,6 +296,11 @@ export default function AgentPage() {
       }
       const data = await res.json();
       setMessages((prev) => [...prev, data]);
+      
+      // Speak response in live mode or if voice is enabled
+      if ((isLiveMode || voiceEnabled) && autoSpeak) {
+        speakText(data.content);
+      }
     } catch (e) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
       setMessages((prev) => [
@@ -204,6 +439,22 @@ export default function AgentPage() {
           <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {isUser ? 'You' : 'Agent'}
           </span>
+          {!isUser && (
+            <button
+              onClick={() => speakText(msg.content)}
+              style={{
+                marginLeft: 'auto',
+                padding: '4px',
+                border: 'none',
+                background: 'transparent',
+                color: theme.textDim,
+                cursor: 'pointer',
+              }}
+              title="Speak this message"
+            >
+              <Volume2 size={14} />
+            </button>
+          )}
         </div>
         {parts.map((part, i) =>
           part.type === 'code' ? (
@@ -232,16 +483,6 @@ export default function AgentPage() {
             <span>Auto-executed {msg.executed_commands.length} command(s)</span>
           </div>
         )}
-        {msg.grounding_results && msg.grounding_results.length > 0 && (
-          <div style={{ marginTop: '8px', fontSize: '12px', color: theme.textDim }}>
-            <strong>Grounding Results:</strong>
-            {msg.grounding_results.map((r, i) => (
-              <div key={i} style={{ marginTop: '4px', padding: '4px 8px', background: theme.secondary, borderRadius: '4px' }}>
-                <code>{r.command}</code> → Exit: {r.exit_code}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     );
   };
@@ -266,26 +507,115 @@ export default function AgentPage() {
           borderBottom: `1px solid ${theme.border}`,
         }}
       >
-        <span style={{ fontSize: '16px', fontWeight: 700, letterSpacing: '0.5px' }}>AI Agent</span>
-        <button
-          data-testid="clear-history-btn"
-          onClick={clearHistory}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '16px', fontWeight: 700, letterSpacing: '0.5px' }}>AI Agent</span>
+          {isLiveMode && (
+            <span style={{
+              padding: '2px 8px',
+              borderRadius: '10px',
+              background: theme.error,
+              color: '#fff',
+              fontSize: '10px',
+              fontWeight: 700,
+              animation: 'pulse 2s infinite',
+            }}>
+              LIVE
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {isSpeaking && (
+            <button
+              data-testid="stop-speaking-btn"
+              onClick={stopSpeaking}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: theme.warning,
+                color: theme.background,
+                cursor: 'pointer',
+                fontSize: '12px',
+              }}
+            >
+              <VolumeX size={14} /> Stop
+            </button>
+          )}
+          <button
+            data-testid="live-mode-btn"
+            onClick={toggleLiveMode}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: `1px solid ${isLiveMode ? theme.error : theme.border}`,
+              background: isLiveMode ? theme.error + '22' : 'transparent',
+              color: isLiveMode ? theme.error : theme.textDim,
+              cursor: 'pointer',
+              fontSize: '12px',
+            }}
+          >
+            {isLiveMode ? <PhoneOff size={14} /> : <Phone size={14} />}
+            {isLiveMode ? 'End Call' : 'Live Chat'}
+          </button>
+          <button
+            data-testid="clear-history-btn"
+            onClick={clearHistory}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: `1px solid ${theme.border}`,
+              background: 'transparent',
+              color: theme.textDim,
+              cursor: 'pointer',
+              fontSize: '12px',
+            }}
+          >
+            <Trash2 size={14} /> Clear
+          </button>
+        </div>
+      </div>
+
+      {/* Live Mode Banner */}
+      {isLiveMode && (
+        <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '4px',
-            padding: '6px 12px',
-            borderRadius: '6px',
-            border: `1px solid ${theme.border}`,
-            background: 'transparent',
-            color: theme.textDim,
-            cursor: 'pointer',
-            fontSize: '12px',
+            justifyContent: 'center',
+            gap: '12px',
+            padding: '12px',
+            background: `linear-gradient(90deg, ${theme.error}22, ${theme.primary}22)`,
+            borderBottom: `1px solid ${theme.border}`,
           }}
         >
-          <Trash2 size={14} /> Clear
-        </button>
-      </div>
+          <div
+            style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              background: isListening ? theme.error : theme.textDim,
+              animation: isListening ? 'pulse 1s infinite' : 'none',
+            }}
+          />
+          <span style={{ fontSize: '14px', fontWeight: 600 }}>
+            {isSpeaking ? '🔊 Speaking...' : isListening ? '🎤 Listening...' : '⏸️ Paused'}
+          </span>
+          {transcript && (
+            <span style={{ fontSize: '13px', color: theme.textDim, fontStyle: 'italic' }}>
+              "{transcript}"
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Messages */}
       <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
@@ -297,6 +627,9 @@ export default function AgentPage() {
           <div style={{ textAlign: 'center', padding: '40px', color: theme.textDim }}>
             <Bot size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
             <p>Ask your AI agent to help with coding,<br />debugging, or terminal operations</p>
+            <p style={{ marginTop: '16px', fontSize: '13px' }}>
+              💡 Tip: Click <strong>Live Chat</strong> for hands-free voice conversation!
+            </p>
           </div>
         ) : (
           messages.map(renderMessage)
@@ -330,6 +663,26 @@ export default function AgentPage() {
           borderTop: `1px solid ${theme.border}`,
         }}
       >
+        <button
+          data-testid="voice-input-btn"
+          onClick={toggleListening}
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            border: `2px solid ${isListening ? theme.error : theme.border}`,
+            background: isListening ? theme.error + '22' : 'transparent',
+            color: isListening ? theme.error : theme.textDim,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s',
+          }}
+          title={isListening ? 'Stop listening' : 'Start voice input'}
+        >
+          {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+        </button>
         <textarea
           data-testid="chat-input"
           value={input}
@@ -340,13 +693,13 @@ export default function AgentPage() {
               sendMessage();
             }
           }}
-          placeholder="Type a message..."
+          placeholder={isListening ? 'Listening...' : 'Type a message...'}
           rows={1}
           style={{
             flex: 1,
             padding: '10px 14px',
             borderRadius: '10px',
-            border: `1px solid ${theme.border}`,
+            border: `1px solid ${isListening ? theme.primary : theme.border}`,
             background: theme.secondary,
             color: theme.foreground,
             fontSize: '14px',
@@ -381,6 +734,10 @@ export default function AgentPage() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
       `}</style>
     </div>

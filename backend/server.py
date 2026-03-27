@@ -172,6 +172,12 @@ class AppConfigCreate(BaseModel):
     nim_api_key: Optional[str] = ""
     nim_endpoint: Optional[str] = "https://integrate.api.nvidia.com/v1/chat/completions"
     nim_model: Optional[str] = "meta/llama-3.1-70b-instruct"
+    # Voice settings
+    voice_enabled: bool = False
+    voice_id: str = "en-US-AriaNeural"
+    voice_rate: str = "+0%"
+    voice_pitch: str = "+0Hz"
+    voice_auto_speak: bool = True
 
 
 class ChatMessageCreate(BaseModel):
@@ -210,6 +216,41 @@ class GroundingResult(BaseModel):
     stderr: str
     exit_code: int
     executed_at: str
+
+
+class TTSRequest(BaseModel):
+    """Text-to-speech request"""
+    text: str
+    voice: str = "en-US-AriaNeural"
+    rate: str = "+0%"
+    pitch: str = "+0Hz"
+
+
+# ===== Edge TTS Voice Options =====
+EDGE_TTS_VOICES = [
+    # English - US
+    {"id": "en-US-AriaNeural", "name": "Aria (US Female)", "gender": "Female", "locale": "en-US"},
+    {"id": "en-US-JennyNeural", "name": "Jenny (US Female)", "gender": "Female", "locale": "en-US"},
+    {"id": "en-US-GuyNeural", "name": "Guy (US Male)", "gender": "Male", "locale": "en-US"},
+    {"id": "en-US-DavisNeural", "name": "Davis (US Male)", "gender": "Male", "locale": "en-US"},
+    {"id": "en-US-TonyNeural", "name": "Tony (US Male)", "gender": "Male", "locale": "en-US"},
+    {"id": "en-US-SaraNeural", "name": "Sara (US Female)", "gender": "Female", "locale": "en-US"},
+    {"id": "en-US-NancyNeural", "name": "Nancy (US Female)", "gender": "Female", "locale": "en-US"},
+    {"id": "en-US-JasonNeural", "name": "Jason (US Male)", "gender": "Male", "locale": "en-US"},
+    # English - UK
+    {"id": "en-GB-SoniaNeural", "name": "Sonia (UK Female)", "gender": "Female", "locale": "en-GB"},
+    {"id": "en-GB-RyanNeural", "name": "Ryan (UK Male)", "gender": "Male", "locale": "en-GB"},
+    {"id": "en-GB-LibbyNeural", "name": "Libby (UK Female)", "gender": "Female", "locale": "en-GB"},
+    # English - Australia
+    {"id": "en-AU-NatashaNeural", "name": "Natasha (AU Female)", "gender": "Female", "locale": "en-AU"},
+    {"id": "en-AU-WilliamNeural", "name": "William (AU Male)", "gender": "Male", "locale": "en-AU"},
+    # Fun/Character voices
+    {"id": "en-US-AnaNeural", "name": "Ana (Child)", "gender": "Female", "locale": "en-US"},
+    {"id": "en-US-AndrewNeural", "name": "Andrew (Narrator)", "gender": "Male", "locale": "en-US"},
+    {"id": "en-US-BrianNeural", "name": "Brian (Narrator)", "gender": "Male", "locale": "en-US"},
+    {"id": "en-US-EmmaNeural", "name": "Emma (Conversational)", "gender": "Female", "locale": "en-US"},
+    {"id": "en-US-MichelleNeural", "name": "Michelle (Friendly)", "gender": "Female", "locale": "en-US"},
+]
 
 
 # ===== Terminal Session (PTY-based) =====
@@ -701,6 +742,12 @@ async def get_config():
         "nim_endpoint": config.get("nim_endpoint", "https://integrate.api.nvidia.com/v1/chat/completions"),
         "nim_model": config.get("nim_model", "meta/llama-3.1-70b-instruct"),
         "has_nim_key": bool(config.get("nim_api_key", "")),
+        # Voice settings
+        "voice_enabled": config.get("voice_enabled", False),
+        "voice_id": config.get("voice_id", "en-US-AriaNeural"),
+        "voice_rate": config.get("voice_rate", "+0%"),
+        "voice_pitch": config.get("voice_pitch", "+0Hz"),
+        "voice_auto_speak": config.get("voice_auto_speak", True),
         "created_at": config.get("created_at", ""),
         "updated_at": config.get("updated_at", ""),
     }
@@ -742,6 +789,12 @@ async def save_config(config_data: AppConfigCreate):
         "nim_endpoint": config_dict.get("nim_endpoint", ""),
         "nim_model": config_dict.get("nim_model", ""),
         "has_nim_key": bool(config_dict.get("nim_api_key", "")),
+        # Voice settings
+        "voice_enabled": config_dict.get("voice_enabled", False),
+        "voice_id": config_dict.get("voice_id", "en-US-AriaNeural"),
+        "voice_rate": config_dict.get("voice_rate", "+0%"),
+        "voice_pitch": config_dict.get("voice_pitch", "+0Hz"),
+        "voice_auto_speak": config_dict.get("voice_auto_speak", True),
         "created_at": config_dict["created_at"],
         "updated_at": config_dict["updated_at"],
     }
@@ -950,6 +1003,81 @@ async def get_terminal_history():
 async def save_terminal_session():
     await terminal.save_now()
     return {"message": "Session saved"}
+
+
+# ===== Text-to-Speech API (Edge TTS) =====
+
+@api_router.get("/tts/voices")
+async def get_tts_voices():
+    """Get available TTS voices"""
+    return {"voices": EDGE_TTS_VOICES}
+
+
+@api_router.post("/tts/speak")
+async def text_to_speech(req: TTSRequest):
+    """Convert text to speech using Edge TTS"""
+    import edge_tts
+    import base64
+    import io
+    
+    try:
+        # Create TTS communicate object
+        communicate = edge_tts.Communicate(
+            text=req.text,
+            voice=req.voice,
+            rate=req.rate,
+            pitch=req.pitch
+        )
+        
+        # Collect audio data
+        audio_data = io.BytesIO()
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data.write(chunk["data"])
+        
+        # Return base64 encoded audio
+        audio_data.seek(0)
+        audio_base64 = base64.b64encode(audio_data.read()).decode('utf-8')
+        
+        return {
+            "audio": audio_base64,
+            "format": "audio/mpeg",
+            "voice": req.voice,
+            "text_length": len(req.text)
+        }
+    except Exception as e:
+        logger.error(f"TTS error: {e}")
+        return JSONResponse(status_code=500, content={"detail": f"TTS error: {str(e)}"})
+
+
+@api_router.get("/tts/test")
+async def test_tts():
+    """Test TTS with a sample message"""
+    import edge_tts
+    import base64
+    import io
+    
+    try:
+        communicate = edge_tts.Communicate(
+            text="Hello! I am your AI assistant. How can I help you today?",
+            voice="en-US-AriaNeural"
+        )
+        
+        audio_data = io.BytesIO()
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data.write(chunk["data"])
+        
+        audio_data.seek(0)
+        audio_base64 = base64.b64encode(audio_data.read()).decode('utf-8')
+        
+        return {
+            "audio": audio_base64,
+            "format": "audio/mpeg",
+            "message": "TTS test successful"
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
 
 
 # ===== File Browser API =====

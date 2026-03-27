@@ -315,6 +315,147 @@ class TerminalAITester:
         
         return False
 
+    def test_tts_voices_endpoint(self):
+        """Test TTS voices endpoint returns list of available voices"""
+        print("\n🎤 Testing TTS Voices Endpoint...")
+        
+        success, response = self.run_test(
+            "TTS Voices List",
+            "GET",
+            "api/tts/voices",
+            200
+        )
+        
+        if success:
+            voices = response.get('voices', [])
+            if isinstance(voices, list) and len(voices) > 0:
+                # Check if voices have required fields
+                first_voice = voices[0]
+                required_fields = ['id', 'name', 'gender', 'locale']
+                if all(field in first_voice for field in required_fields):
+                    print(f"   ✅ Found {len(voices)} voices with proper structure")
+                    print(f"   Sample voice: {first_voice['name']} ({first_voice['gender']}, {first_voice['locale']})")
+                    return True
+                else:
+                    print(f"   ❌ Voice objects missing required fields")
+                    return False
+            else:
+                print(f"   ❌ No voices found in response")
+                return False
+        
+        return False
+
+    def test_tts_speak_endpoint(self):
+        """Test TTS speak endpoint generates audio from text"""
+        print("\n🔊 Testing TTS Speak Endpoint...")
+        
+        tts_data = {
+            "text": "Hello, this is a test of the text to speech system.",
+            "voice": "en-US-AriaNeural",
+            "rate": "+0%",
+            "pitch": "+0Hz"
+        }
+        
+        success, response = self.run_test(
+            "TTS Speak",
+            "POST",
+            "api/tts/speak",
+            200,
+            data=tts_data
+        )
+        
+        if success:
+            # Check if response has audio data
+            audio_data = response.get('audio')
+            audio_format = response.get('format')
+            voice_used = response.get('voice')
+            text_length = response.get('text_length')
+            
+            if audio_data and audio_format and voice_used:
+                print(f"   ✅ TTS generated audio: format={audio_format}, voice={voice_used}, text_len={text_length}")
+                print(f"   Audio data length: {len(audio_data)} characters (base64)")
+                return True
+            else:
+                print(f"   ❌ TTS response missing required fields")
+                return False
+        
+        return False
+
+    def test_config_voice_settings(self):
+        """Test config API stores and retrieves voice settings"""
+        print("\n🎛️ Testing Voice Settings in Config API...")
+        
+        # Test POST config with voice settings
+        voice_config = {
+            "provider": "openai",
+            "api_key": "test-key-voice",
+            "endpoint": "https://api.openai.com/v1/chat/completions",
+            "model": "gpt-4o",
+            "agent_name": "VoiceTestAgent",
+            "system_prompt": "Test voice system prompt",
+            "theme": "cyberpunk_void",
+            "auto_execute": False,
+            # Voice settings
+            "voice_enabled": True,
+            "voice_id": "en-US-JennyNeural",
+            "voice_rate": "+10%",
+            "voice_pitch": "+5Hz",
+            "voice_auto_speak": False
+        }
+        
+        post_success, post_response = self.run_test(
+            "Save Voice Config",
+            "POST",
+            "api/config",
+            200,
+            data=voice_config
+        )
+        
+        if post_success:
+            # Verify voice fields are saved
+            voice_enabled = post_response.get('voice_enabled')
+            voice_id = post_response.get('voice_id')
+            voice_rate = post_response.get('voice_rate')
+            voice_pitch = post_response.get('voice_pitch')
+            voice_auto_speak = post_response.get('voice_auto_speak')
+            
+            if (voice_enabled is True and 
+                voice_id == "en-US-JennyNeural" and 
+                voice_rate == "+10%" and 
+                voice_pitch == "+5Hz" and 
+                voice_auto_speak is False):
+                print(f"   ✅ Voice settings saved correctly")
+                print(f"   Voice: {voice_id}, Rate: {voice_rate}, Pitch: {voice_pitch}")
+                print(f"   Enabled: {voice_enabled}, Auto-speak: {voice_auto_speak}")
+                
+                # Now test GET to verify persistence
+                get_success, get_response = self.run_test(
+                    "Get Voice Config",
+                    "GET",
+                    "api/config",
+                    200
+                )
+                
+                if get_success:
+                    # Verify voice settings persist
+                    get_voice_enabled = get_response.get('voice_enabled')
+                    get_voice_id = get_response.get('voice_id')
+                    
+                    if get_voice_enabled is True and get_voice_id == "en-US-JennyNeural":
+                        print(f"   ✅ Voice settings persist after GET")
+                        return True
+                    else:
+                        print(f"   ❌ Voice settings not persisted correctly")
+                        return False
+                
+                return True
+            else:
+                print(f"   ❌ Voice settings not saved correctly")
+                print(f"   Got: enabled={voice_enabled}, id={voice_id}, rate={voice_rate}")
+                return False
+        
+        return False
+
     def run_all_tests(self):
         """Run all backend tests"""
         print("🚀 Starting Terminal-AI Backend API Tests")
@@ -325,6 +466,9 @@ class TerminalAITester:
         tests = [
             self.test_health_endpoint,
             self.test_config_api,
+            self.test_config_voice_settings,  # Test voice settings in config
+            self.test_tts_voices_endpoint,    # Test TTS voices endpoint
+            self.test_tts_speak_endpoint,     # Test TTS speak endpoint
             self.test_grounding_execute,
             self.test_tool_dispatch,
             self.test_tools_list,
