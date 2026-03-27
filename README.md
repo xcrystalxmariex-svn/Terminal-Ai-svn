@@ -1,4 +1,4 @@
-# 📱 Terminal-Ai
+# 📱 Terminal-Ai-svn
 
 AI-powered terminal assistant for Android (Termux) with full bash execution, file management, multi-provider LLM support, and **live voice chat**.
 
@@ -38,11 +38,11 @@ pkg install -y python nodejs-lts git tmux curl
 termux-setup-storage
 ```
 
-### Step 3: Clone Terminal-Ai
+### Step 3: Clone Terminal-Ai-svn
 ```bash
 # Clone the repository
-git clone https://github.com/SeVin-DEV/Terminal-Ai.git ~/Terminal-Ai
-cd ~/Terminal-Ai
+git clone https://github.com/xcrystalxmariex-svn/Terminal-Ai-svn.git ~/Terminal-Ai-svn
+cd ~/Terminal-Ai-svn
 ```
 
 ### Step 4: Install Python Dependencies
@@ -55,7 +55,7 @@ pip install fastapi==0.95.2 pydantic==1.10.13 uvicorn httpx python-dotenv edge-t
 
 ### Step 5: Install Frontend Dependencies
 ```bash
-cd ~/Terminal-Ai/frontend
+cd ~/Terminal-Ai-svn/frontend
 npm install --legacy-peer-deps
 cd ..
 ```
@@ -63,20 +63,20 @@ cd ..
 ### Step 6: Create Environment File
 ```bash
 # Create backend .env file
-cat > ~/Terminal-Ai/backend/.env << 'EOF'
+cat > ~/Terminal-Ai-svn/backend/.env << 'EOF'
 STORAGE_TYPE=json
-DATA_DIR=/data/data/com.termux/files/home/Terminal-Ai/backend/data
+DATA_DIR=/data/data/com.termux/files/home/Terminal-Ai-svn/backend/data
 DB_NAME=termuxai
 EOF
 ```
 
-### Step 7: Start Terminal-Ai
+### Step 7: Start Terminal-Ai-svn
 ```bash
 # Make scripts executable
-chmod +x ~/Terminal-Ai/*.sh
+chmod +x ~/Terminal-Ai-svn/*.sh
 
 # Start the app
-~/Terminal-Ai/start.sh
+~/Terminal-Ai-svn/start.sh
 ```
 
 ### Step 8: Access the App
@@ -91,7 +91,7 @@ chmod +x ~/Terminal-Ai/*.sh
 If you already have Termux set up with packages:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/SeVin-DEV/Terminal-Ai/main/install-termux.sh | bash
+curl -sSL https://raw.githubusercontent.com/xcrystalxmariex-svn/Terminal-Ai-svn/main/install-termux.sh | bash
 ```
 
 ---
@@ -161,13 +161,13 @@ curl -sSL https://raw.githubusercontent.com/SeVin-DEV/Terminal-Ai/main/install-t
 
 ```bash
 # Start services
-~/Terminal-Ai/start.sh
+~/Terminal-Ai-svn/start.sh
 
 # Stop services
-~/Terminal-Ai/stop.sh
+~/Terminal-Ai-svn/stop.sh
 
 # Check status
-~/Terminal-Ai/status.sh
+~/Terminal-Ai-svn/status.sh
 
 # View backend logs
 tmux attach -t termuxai-backend
@@ -214,7 +214,7 @@ export ANDROID_API_LEVEL=24
 ### Frontend won't start
 ```bash
 # Clear npm cache and reinstall
-cd ~/Terminal-Ai/frontend
+cd ~/Terminal-Ai-svn/frontend
 rm -rf node_modules package-lock.json
 npm install --legacy-peer-deps
 ```
@@ -240,74 +240,6 @@ ip addr show wlan0 | grep 'inet '
 
 ---
 
-## 📁 File Structure
-
-```
-Terminal-Ai/
-├── backend/
-│   ├── server.py              # FastAPI server + TTS + Grounding
-│   ├── requirements.txt       # Standard deps
-│   ├── requirements-termux.txt # Termux-specific deps
-│   ├── .env                   # Environment config
-│   └── data/                  # JSON storage (auto-created)
-├── frontend/
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Terminal.js    # Terminal view
-│   │   │   ├── Agent.js       # AI chat + voice
-│   │   │   ├── Files.js       # File browser
-│   │   │   └── Settings.js    # Settings (3 tabs)
-│   │   ├── contexts/
-│   │   │   └── ThemeContext.js
-│   │   └── config.js          # API endpoints
-│   └── package.json
-├── start.sh                   # Start both services
-├── stop.sh                    # Stop services
-├── status.sh                  # Check status
-├── install-termux.sh          # One-line installer
-└── README.md
-```
-
----
-
-## 🔌 API Reference
-
-### Chat
-```bash
-curl -X POST http://localhost:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"content": "list files"}'
-```
-
-### Text-to-Speech
-```bash
-# Get available voices
-curl http://localhost:8000/api/tts/voices
-
-# Generate speech
-curl -X POST http://localhost:8000/api/tts/speak \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Hello world", "voice": "en-US-AriaNeural"}'
-```
-
-### Grounding
-```bash
-curl -X POST http://localhost:8000/api/grounding/execute \
-  -H "Content-Type: application/json" \
-  -d '{"command": "ls -la", "timeout": 10}'
-```
-
----
-
-## 🤝 Contributing
-
-1. Fork the repo
-2. Create feature branch
-3. Test on Termux
-4. Submit PR
-
----
-
-## 📄 License
+## 🤝 License
 
 MIT
