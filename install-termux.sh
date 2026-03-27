@@ -1,12 +1,12 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Terminal-Ai Termux Installer v2.1
-# One-line install: curl -sSL https://raw.githubusercontent.com/SeVin-DEV/Terminal-Ai/main/install-termux.sh | bash
+# Terminal-Ai Termux Installer v2.1.1
+# One-line install: curl -sSL https://raw.githubusercontent.com/xcrystalxmariex-svn/Terminal-Ai-svn/main/install-termux.sh | bash
 
 set -e
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
-echo "║           Terminal-Ai Termux Installer v2.1              ║"
+echo "║           Terminal-Ai Termux Installer v2.1.1              ║"
 echo "║         AI Terminal + Voice Chat for Android             ║"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
@@ -34,14 +34,14 @@ pkg install -y python nodejs-lts git tmux curl
 log_ok "Dependencies installed"
 
 # Step 3: Clone or update repo
-log_step "Setting up Terminal-Ai..."
-if [ -d "$HOME/Terminal-Ai" ]; then
+log_step "Setting up Terminal-Ai-svn..."
+if [ -d "$HOME/Terminal-Ai-svn" ]; then
     log_warn "Existing installation found, updating..."
-    cd "$HOME/Terminal-Ai"
+    cd "$HOME/Terminal-Ai-svn"
     git pull || true
 else
-    git clone https://github.com/SeVin-DEV/Terminal-Ai.git "$HOME/Terminal-Ai"
-    cd "$HOME/Terminal-Ai"
+    git clone https://github.com/xcrystalxmariex-svn/Terminal-Ai-svn.git "$HOME/Terminal-Ai-svn"
+    cd "$HOME/Terminal-Ai-svn"
 fi
 log_ok "Repository ready"
 
@@ -53,19 +53,19 @@ log_ok "Python packages installed"
 
 # Step 5: Install frontend dependencies
 log_step "Installing frontend packages..."
-cd "$HOME/Terminal-Ai/frontend"
+cd "$HOME/Terminal-Ai-svn/frontend"
 npm install --legacy-peer-deps 2>/dev/null || npm install
-cd "$HOME/Terminal-Ai"
+cd "$HOME/Terminal-Ai-svn"
 log_ok "Frontend packages installed"
 
 # Step 6: Create .env if not exists
 log_step "Configuring environment..."
-if [ ! -f "$HOME/Terminal-Ai/backend/.env" ]; then
-    mkdir -p "$HOME/Terminal-Ai/backend/data"
-    cat > "$HOME/Terminal-Ai/backend/.env" << 'EOF'
+if [ ! -f "$HOME/Terminal-Ai-svn/backend/.env" ]; then
+    mkdir -p "$HOME/Terminal-Ai-svn/backend/data"
+    cat > "$HOME/Terminal-Ai-svn/backend/.env" << 'EOF'
 # Terminal-Ai Backend Config
 STORAGE_TYPE=json
-DATA_DIR=/data/data/com.termux/files/home/Terminal-Ai/backend/data
+DATA_DIR=/data/data/com.termux/files/home/Terminal-Ai-svn/backend/data
 DB_NAME=termuxai
 EOF
 fi
@@ -75,11 +75,11 @@ log_ok "Environment configured"
 log_step "Creating management scripts..."
 
 # Start script
-cat > "$HOME/Terminal-Ai/start.sh" << 'STARTEOF'
+cat > "$HOME/Terminal-Ai-svn/start.sh" << 'STARTEOF'
 #!/data/data/com.termux/files/usr/bin/bash
 cd "$(dirname "$0")"
 
-echo "Starting Terminal-Ai..."
+echo "Starting Terminal-Ai-svn..."
 
 # Acquire wake lock to prevent sleep
 termux-wake-lock 2>/dev/null || true
@@ -90,14 +90,14 @@ tmux kill-session -t termuxai-frontend 2>/dev/null || true
 sleep 1
 
 # Start backend in tmux (auto-restart on crash)
-tmux new-session -d -s termuxai-backend "cd $HOME/Terminal-Ai/backend && while true; do echo '=== Backend Starting ===' && uvicorn server:app --host 0.0.0.0 --port 8000 --reload; echo 'Crashed. Restarting in 3s...'; sleep 3; done"
+tmux new-session -d -s termuxai-backend "cd $HOME/Terminal-Ai-svn/backend && while true; do echo '=== Backend Starting ===' && uvicorn server:app --host 0.0.0.0 --port 8000 --reload; echo 'Crashed. Restarting in 3s...'; sleep 3; done"
 
 # Wait for backend to be ready
 echo "Waiting for backend..."
 sleep 4
 
 # Start frontend in tmux
-tmux new-session -d -s termuxai-frontend "cd $HOME/Terminal-Ai/frontend && PORT=8081 npm start"
+tmux new-session -d -s termuxai-frontend "cd $HOME/Terminal-Ai-svn/frontend && PORT=8081 npm start"
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
@@ -111,27 +111,27 @@ echo "║    tmux attach -t termuxai-backend                       ║"
 echo "║    tmux attach -t termuxai-frontend                      ║"
 echo "║    (Detach: Ctrl+B, then D)                              ║"
 echo "║                                                          ║"
-echo "║  Stop: ~/Terminal-Ai/stop.sh                             ║"
+echo "║  Stop: ~/Terminal-Ai-svn/stop.sh                         ║"
 echo "║                                                          ║"
-echo "╚══════════════════════════════════════════════════════════╝"
+╚══════════════════════════════════════════════════════════╝"
 STARTEOF
-chmod +x "$HOME/Terminal-Ai/start.sh"
+chmod +x "$HOME/Terminal-Ai-svn/start.sh"
 
 # Stop script
-cat > "$HOME/Terminal-Ai/stop.sh" << 'STOPEOF'
+cat > "$HOME/Terminal-Ai-svn/stop.sh" << 'STOPEOF'
 #!/data/data/com.termux/files/usr/bin/bash
-echo "Stopping Terminal-Ai..."
+echo "Stopping Terminal-Ai-svn..."
 tmux kill-session -t termuxai-backend 2>/dev/null || true
 tmux kill-session -t termuxai-frontend 2>/dev/null || true
 termux-wake-unlock 2>/dev/null || true
-echo "Terminal-Ai stopped."
+echo "Terminal-Ai-svn stopped."
 STOPEOF
-chmod +x "$HOME/Terminal-Ai/stop.sh"
+chmod +x "$HOME/Terminal-Ai-svn/stop.sh"
 
 # Status script
-cat > "$HOME/Terminal-Ai/status.sh" << 'STATUSEOF'
+cat > "$HOME/Terminal-Ai-svn/status.sh" << 'STATUSEOF'
 #!/data/data/com.termux/files/usr/bin/bash
-echo "Terminal-Ai Status:"
+echo "Terminal-Ai-svn Status:"
 echo ""
 
 if tmux has-session -t termuxai-backend 2>/dev/null; then
@@ -157,8 +157,8 @@ fi
 
 echo ""
 echo "Commands:"
-echo "  Start:  ~/Terminal-Ai/start.sh"
-echo "  Stop:   ~/Terminal-Ai/stop.sh"
+echo "  Start:  ~/Terminal-Ai-svn/start.sh"
+echo "  Stop:   ~/Terminal-Ai-svn/stop.sh"
 echo "  Logs:   tmux attach -t termuxai-backend"
 echo ""
 echo "Access: http://127.0.0.1:8081"
@@ -169,14 +169,14 @@ if [ -n "$ip" ]; then
     echo "LAN:    http://$ip:8081"
 fi
 STATUSEOF
-chmod +x "$HOME/Terminal-Ai/status.sh"
+chmod +x "$HOME/Terminal-Ai-svn/status.sh"
 
 # Auto-start on Termux:Boot (if installed)
 mkdir -p "$HOME/.termux/boot"
 cat > "$HOME/.termux/boot/termuxai" << 'BOOTEOF'
 #!/data/data/com.termux/files/usr/bin/bash
 sleep 5
-cd ~/Terminal-Ai && ./start.sh
+cd ~/Terminal-Ai-svn && ./start.sh
 BOOTEOF
 chmod +x "$HOME/.termux/boot/termuxai"
 
@@ -189,20 +189,20 @@ echo "║           Installation Complete!                         ║"
 echo "╠══════════════════════════════════════════════════════════╣"
 echo "║                                                          ║"
 echo "║  Commands:                                               ║"
-echo "║    Start:  ~/Terminal-Ai/start.sh                        ║"
-echo "║    Stop:   ~/Terminal-Ai/stop.sh                         ║"
-echo "║    Status: ~/Terminal-Ai/status.sh                       ║"
+echo "║    Start:  ~/Terminal-Ai-svn/start.sh                    ║"
+echo "║    Stop:   ~/Terminal-Ai-svn/stop.sh                     ║"
+echo "║    Status: ~/Terminal-Ai-svn/status.sh                   ║"
 echo "║                                                          ║"
 echo "║  After starting, open: http://127.0.0.1:8081             ║"
 echo "║                                                          ║"
 echo "║  Auto-start on boot:                                     ║"
 echo "║    Install Termux:Boot from F-Droid                      ║"
 echo "║                                                          ║"
-echo "╚══════════════════════════════════════════════════════════╝"
+╚══════════════════════════════════════════════════════════╝"
 echo ""
 
-read -p "Start Terminal-Ai now? (y/n) " -n 1 -r
+read -p "Start Terminal-Ai-svn now? (y/n) " -n 1 -r
 echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    "$HOME/Terminal-Ai/start.sh"
+    "$HOME/Terminal-Ai-svn/start.sh"
 fi
