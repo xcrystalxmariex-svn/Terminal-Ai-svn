@@ -1,10 +1,10 @@
 #!/bin/bash
 # Terminal-Ai Start Script
-# Works on both Termux and standard Linux
+# Optimized for Terminal-Ai-svn in Termux
 
 cd "$(dirname "$0")"
 
-echo "Starting Terminal-Ai..."
+echo "Starting Terminal-Ai-svn..."
 
 # Detect environment
 if [ -d "/data/data/com.termux" ]; then
@@ -17,24 +17,22 @@ if [ -d "/data/data/com.termux" ]; then
     sleep 1
     
     # Start backend
-    tmux new-session -d -s termuxai-backend "cd ~/Terminal-Ai/backend && while true; do echo '=== Backend Starting ===' && uvicorn server:app --host 0.0.0.0 --port 8000 --reload; echo 'Restarting in 3s...'; sleep 3; done"
+    tmux new-session -d -s termuxai-backend "cd $HOME/Terminal-Ai-svn/backend && while true; do echo '=== Backend Starting ===' && uvicorn server:app --host 0.0.0.0 --port 8000 --reload; echo 'Restarting in 3s...'; sleep 3; done"
     
     # Wait for backend
     sleep 3
     
     # Start frontend
-    tmux new-session -d -s termuxai-frontend "cd ~/Terminal-Ai/frontend && EXPO_PUBLIC_BACKEND_URL=http://127.0.0.1:8000 npx expo start --web --host 0.0.0.0 --port 19006"
+    tmux new-session -d -s termuxai-frontend "cd $HOME/Terminal-Ai-svn/frontend && PORT=8081 npm start"
     
     echo ""
-    echo "Terminal-Ai Started!"
+    echo "Terminal-Ai-svn Started!"
     echo "  Backend:  http://127.0.0.1:8000"
-    echo "  Frontend: http://127.0.0.1:19006"
+    echo "  Frontend: http://127.0.0.1:8081"
     echo ""
     echo "  View logs: tmux attach -t termuxai-backend"
     echo "  Stop: ./stop.sh"
 else
-    # Standard Linux/Docker environment
-    echo "Use supervisor to manage services:"
-    echo "  sudo supervisorctl restart backend frontend"
-    echo "  sudo supervisorctl status"
+    echo "This script is optimized for Termux."
+    echo "For standard Linux, please update the paths in this script."
 fi
