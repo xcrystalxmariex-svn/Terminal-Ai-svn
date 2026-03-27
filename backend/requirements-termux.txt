@@ -1,0 +1,18 @@
+# Terminal-Ai Backend Dependencies
+# TERMUX-OPTIMIZED: Pure Python only, no Rust/native builds
+# ============================================
+# DO NOT use: pip install -r requirements.txt
+# 
+# Install manually on Termux:
+#   pip install fastapi==0.95.2 pydantic==1.10.13 uvicorn httpx python-dotenv
+#
+# If you get Rust/maturin errors:
+#   pkg install rust clang cmake ninja
+#   export ANDROID_API_LEVEL=24
+# ============================================
+
+fastapi==0.95.2
+pydantic==1.10.13
+uvicorn
+httpx
+python-dotenv

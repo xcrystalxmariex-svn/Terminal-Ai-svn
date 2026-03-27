@@ -1,0 +1,9 @@
+# Terminal-Ai Backend Dependencies
+# Standard environment (Emergent/Docker)
+
+fastapi
+pydantic>=2.0.0
+uvicorn[standard]
+httpx
+python-dotenv
+motor
