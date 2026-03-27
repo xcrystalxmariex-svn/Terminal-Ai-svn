@@ -15,33 +15,83 @@ AI-powered terminal assistant for Android (Termux) with full bash execution, fil
 
 ---
 
-## 🚀 Quick Start (Termux)
+## 🚀 First-Time Termux Setup (Complete Guide)
 
-### One-Line Install
+### Prerequisites
+- Android device (tested on Pixel 3 XL)
+- [Termux app from F-Droid](https://f-droid.org/en/packages/com.termux/) (NOT Play Store version)
+- Optional: [Termux:Boot](https://f-droid.org/en/packages/com.termux.boot/) for auto-start
+
+### Step 1: Install Termux
+1. Download Termux from **F-Droid** (Play Store version is outdated)
+2. Open Termux and grant storage permission when prompted
+
+### Step 2: Initial Termux Setup
+```bash
+# Update package lists and upgrade existing packages
+pkg update && pkg upgrade -y
+
+# Install required system packages
+pkg install -y python nodejs-lts git tmux curl
+
+# Grant Termux access to storage (for file browser)
+termux-setup-storage
+```
+
+### Step 3: Clone Terminal-Ai
+```bash
+# Clone the repository
+git clone https://github.com/SeVin-DEV/Terminal-Ai.git ~/Terminal-Ai
+cd ~/Terminal-Ai
+```
+
+### Step 4: Install Python Dependencies
+```bash
+# IMPORTANT: Do NOT use pip install -r requirements.txt
+# Termux requires specific versions to avoid Rust build errors
+
+pip install fastapi==0.95.2 pydantic==1.10.13 uvicorn httpx python-dotenv edge-tts
+```
+
+### Step 5: Install Frontend Dependencies
+```bash
+cd ~/Terminal-Ai/frontend
+npm install --legacy-peer-deps
+cd ..
+```
+
+### Step 6: Create Environment File
+```bash
+# Create backend .env file
+cat > ~/Terminal-Ai/backend/.env << 'EOF'
+STORAGE_TYPE=json
+DATA_DIR=/data/data/com.termux/files/home/Terminal-Ai/backend/data
+DB_NAME=termuxai
+EOF
+```
+
+### Step 7: Start Terminal-Ai
+```bash
+# Make scripts executable
+chmod +x ~/Terminal-Ai/*.sh
+
+# Start the app
+~/Terminal-Ai/start.sh
+```
+
+### Step 8: Access the App
+- Open browser on your phone: `http://127.0.0.1:8081`
+- Or from another device on same WiFi: `http://<PHONE_IP>:8081`
+- Find your phone IP: `ip addr show wlan0 | grep 'inet '`
+
+---
+
+## 🔄 One-Line Install (After Termux Setup)
+
+If you already have Termux set up with packages:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/SeVin-DEV/Terminal-Ai/main/install-termux.sh | bash
-```
-
-### Manual Install
-
-```bash
-# 1. Install system packages
-pkg update && pkg upgrade -y
-pkg install python nodejs-lts git tmux
-
-# 2. Clone repo
-git clone https://github.com/SeVin-DEV/Terminal-Ai.git ~/Terminal-Ai
-cd ~/Terminal-Ai
-
-# 3. Install Python deps (MANUAL - not pip install -r)
-pip install fastapi==0.95.2 pydantic==1.10.13 uvicorn httpx python-dotenv
-
-# 4. Install frontend deps
-cd frontend && npm install && cd ..
-
-# 5. Start services
-./start.sh
 ```
 
 ---
@@ -53,17 +103,17 @@ cd frontend && npm install && cd ..
 │                    Termux (Android)                  │
 │  ┌──────────────────┐    ┌────────────────────────┐ │
 │  │  tmux: backend   │    │   tmux: frontend       │ │
-│  │  uvicorn :8000   │◄──►│   expo web :19006      │ │
+│  │  uvicorn :8000   │◄──►│   react-scripts :8081  │ │
 │  │                  │    │                        │ │
 │  │  • AI Chat API   │    │   • Terminal View      │ │
 │  │  • Grounding     │    │   • Agent Chat         │ │
 │  │  • Tool Dispatch │    │   • File Browser       │ │
-│  │  • File API      │    │   • Settings           │ │
-│  │  • WebSocket PTY │    │                        │ │
+│  │  • TTS Engine    │    │   • Settings           │ │
+│  │  • WebSocket PTY │    │   • Voice Chat         │ │
 │  └──────────────────┘    └────────────────────────┘ │
 │                  │                                   │
 │                  ▼                                   │
-│         Browser: http://127.0.0.1:19006             │
+│         Browser: http://127.0.0.1:8081              │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -81,14 +131,52 @@ cd frontend && npm install && cd ..
 | **Nvidia NIM** | `https://integrate.api.nvidia.com/v1/chat/completions` | `meta/llama-3.1-70b-instruct` |
 | OpenAI Compatible | Your endpoint | Your model |
 
-### Settings UI
+### Settings Tabs
 
-Access Settings tab to configure:
-- AI Provider & API Key
-- **NIM API Key** (separate tab)
-- Agent Name & System Prompt
-- Theme
-- Auto-Execute toggle
+1. **AI Provider** - Select provider, enter API key, endpoint, model
+2. **Nvidia NIM** - Dedicated NIM configuration with quick-select models
+3. **Voice** - Enable voice output, select AI voice, adjust speech rate
+
+---
+
+## 🎙️ Voice Chat
+
+### Live Chat Mode
+1. Go to **Agent** tab
+2. Click **Live Chat** button (phone icon)
+3. Speak naturally - your words appear in real-time
+4. After 2 seconds of silence, message auto-sends
+5. AI responds and speaks aloud
+6. Click **End Call** to exit
+
+### Voice Settings
+- **18+ natural voices** (Microsoft Edge TTS - free)
+- Male/female options from US, UK, Australia
+- Adjustable speech rate (-20% to +30%)
+- Test voice before selecting
+
+---
+
+## 🏃 Management Commands
+
+```bash
+# Start services
+~/Terminal-Ai/start.sh
+
+# Stop services
+~/Terminal-Ai/stop.sh
+
+# Check status
+~/Terminal-Ai/status.sh
+
+# View backend logs
+tmux attach -t termuxai-backend
+
+# View frontend logs
+tmux attach -t termuxai-frontend
+
+# Detach from tmux: Ctrl+B, then D
+```
 
 ---
 
@@ -96,177 +184,59 @@ Access Settings tab to configure:
 
 ### v2.1.0 (Latest) - Voice Chat Update
 
-#### ✅ New Features
-
-1. **Live Voice Chat** (`Agent.js`)
-   - Phone-call style hands-free conversation
-   - "Live Chat" button activates continuous listening mode
-   - Visual indicators: LIVE badge, listening/speaking status
-   - Auto-sends after 2 seconds of silence
-   - Transcription shown in real-time
-
-2. **Voice Input** (Browser Web Speech API)
-   - Free, works offline on Android
-   - Microphone button for push-to-talk
-   - Real-time transcription to text input
-
-3. **Voice Output** (Edge TTS - Free Natural Voices)
-   - 18+ natural Microsoft voices (US, UK, AU)
-   - Male and female options
-   - Adjustable speech rate (-20% to +30%)
-   - Test voice preview in settings
-
-4. **Voice Settings Tab** (`Settings.js`)
-   - Enable/disable voice output
-   - AI voice selection dropdown
-   - Auto-speak responses toggle
-   - Speech rate controls
-   - Test voice button
+- **Live Voice Chat** - Phone-call style hands-free conversation
+- **Voice Input** - Browser Web Speech API (free, offline)
+- **Voice Output** - Edge TTS with 18+ natural Microsoft voices
+- **Voice Settings Tab** - Voice selection, speech rate, test button
 
 ### v2.0.0 - Core Features
 
-#### ✅ Completed Tasks
-
-1. **Grounding Loop Interceptor** (`server.py`)
-   - Executes bash code blocks from AI responses
-   - Captures stdout/stderr and feeds back to model
-   - Configurable timeout per command
-
-2. **Universal Tool Dispatcher** (`server.py`)
-   - Parses MCP-style JSON tool calls: `{"tool": "...", "arguments": {...}}`
-   - Available tools: `bash`, `read_file`, `write_file`, `list_files`, `browser`
-   - Extensible handler system
-
-3. **Nvidia NIM Provider** (`server.py`)
-   - Full NIM API integration (OpenAI-compatible)
-   - Separate NIM API key storage
-   - Default endpoint: `https://integrate.api.nvidia.com/v1/chat/completions`
-   - Default model: `meta/llama-3.1-70b-instruct`
-
-4. **Dynamic `/chat` Config** (`server.py`)
-   - Override `api_key`, `model`, `endpoint`, `provider` per-request
-   - Useful for multi-tenant or testing scenarios
-
-5. **NIM Settings Tab** (`settings.tsx`)
-   - Dedicated NIM configuration section
-   - NIM API key input (separate from main provider key)
-   - NIM endpoint & model fields
-   - Provider chip for quick selection
-
-6. **WebSocket Reconnect Fix** (`terminal.tsx` / `terminal-html`)
-   - Exponential backoff: 1s → 2s → 4s → ... → 30s max
-   - Random jitter to prevent thundering herd
-   - Max 10 reconnect attempts before giving up
-   - Visual feedback: "[Reconnecting in Xs...]"
-
-7. **Playwright/Browser MCP Stub** (`server.py`)
-   - Tool handler placeholder for browser automation
-   - Ready for full Playwright integration
-
-#### 📝 Termux Compatibility Notes
-
-- **Pydantic v1.10.13**: Pure Python, avoids Rust `pydantic-core` build
-- **FastAPI v0.95.2**: Compatible with Pydantic v1
-- **No MongoDB required**: JSON file storage fallback
-- **PTY optional**: Graceful fallback to subprocess if PTY unavailable
-
----
-
-## 🏃 Running
-
-### Start Both Services
-
-```bash
-cd ~/Terminal-Ai
-./start.sh
-```
-
-### Start Individually
-
-**Backend:**
-```bash
-cd ~/Terminal-Ai/backend
-uvicorn server:app --host 0.0.0.0 --port 8000 --reload
-```
-
-**Frontend:**
-```bash
-cd ~/Terminal-Ai/frontend
-EXPO_PUBLIC_BACKEND_URL=http://127.0.0.1:8000 npx expo start --web --host 0.0.0.0
-```
-
-### Access
-
-- **Same device**: `http://127.0.0.1:19006`
-- **LAN access**: `http://<PHONE_IP>:19006`
-  - Find IP: `ip addr show wlan0 | grep 'inet '`
-
----
-
-## 🔧 API Reference
-
-### Chat
-
-```bash
-# Basic chat
-curl -X POST http://localhost:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"content": "list files in current directory"}'
-
-# With dynamic config override
-curl -X POST http://localhost:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "hello",
-    "provider": "nvidia_nim",
-    "api_key": "nvapi-xxx",
-    "model": "meta/llama-3.1-70b-instruct"
-  }'
-```
-
-### Grounding (Direct Execution)
-
-```bash
-curl -X POST http://localhost:8000/api/grounding/execute \
-  -H "Content-Type: application/json" \
-  -d '{"command": "ls -la", "timeout": 10}'
-```
-
-### Tool Dispatch
-
-```bash
-curl -X POST http://localhost:8000/api/tools/dispatch \
-  -H "Content-Type: application/json" \
-  -d '{"tool": "read_file", "arguments": {"path": "/etc/hostname"}}'
-```
-
-### List Tools
-
-```bash
-curl http://localhost:8000/api/tools/list
-```
+- **Grounding Loop** - AI executes bash and sees output
+- **Tool Dispatcher** - MCP-style tool calls
+- **Nvidia NIM** - Full provider support
+- **Dynamic Config** - Override settings per-request
+- **WebSocket Reconnect** - Exponential backoff
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Rust/Maturin Build Errors
-
+### "pip install" fails with Rust errors
 ```bash
+# Use specific versions that don't require Rust
+pip install fastapi==0.95.2 pydantic==1.10.13
+
+# Or if you must build from source:
 pkg install rust clang cmake ninja
 export ANDROID_API_LEVEL=24
-pip install --no-build-isolation pydantic==1.10.13
 ```
 
-### WebSocket Connection Issues
+### Frontend won't start
+```bash
+# Clear npm cache and reinstall
+cd ~/Terminal-Ai/frontend
+rm -rf node_modules package-lock.json
+npm install --legacy-peer-deps
+```
 
+### WebSocket disconnects
 - Check backend is running: `curl http://localhost:8000/api/health`
-- Check firewall/network
+- Backend auto-restarts on crash (tmux loop)
 - Try refreshing browser
 
-### PTY Not Available
+### Voice input not working
+- Grant microphone permission to browser
+- Use Chrome/Chromium (best Web Speech API support)
+- Check that HTTPS or localhost is used
 
-Server will fallback to subprocess execution. Full PTY requires proper Termux environment.
+### Can't access from other devices
+```bash
+# Find your phone's IP
+ip addr show wlan0 | grep 'inet '
+
+# Access from: http://<PHONE_IP>:8081
+# Make sure devices are on same WiFi
+```
 
 ---
 
@@ -275,25 +245,56 @@ Server will fallback to subprocess execution. Full PTY requires proper Termux en
 ```
 Terminal-Ai/
 ├── backend/
-│   ├── server.py              # Main FastAPI server
+│   ├── server.py              # FastAPI server + TTS + Grounding
 │   ├── requirements.txt       # Standard deps
 │   ├── requirements-termux.txt # Termux-specific deps
-│   └── data/                  # JSON storage
+│   ├── .env                   # Environment config
+│   └── data/                  # JSON storage (auto-created)
 ├── frontend/
-│   ├── app/
-│   │   ├── (tabs)/
-│   │   │   ├── terminal.tsx   # Terminal view
-│   │   │   ├── agent.tsx      # AI chat
-│   │   │   ├── files.tsx      # File browser
-│   │   │   └── settings.tsx   # Settings (NIM tab)
-│   │   └── ...
-│   └── src/
-│       ├── constants/themes.ts
-│       └── contexts/ThemeContext.tsx
-├── start.sh                   # Start script
-├── stop.sh                    # Stop script
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Terminal.js    # Terminal view
+│   │   │   ├── Agent.js       # AI chat + voice
+│   │   │   ├── Files.js       # File browser
+│   │   │   └── Settings.js    # Settings (3 tabs)
+│   │   ├── contexts/
+│   │   │   └── ThemeContext.js
+│   │   └── config.js          # API endpoints
+│   └── package.json
+├── start.sh                   # Start both services
+├── stop.sh                    # Stop services
+├── status.sh                  # Check status
 ├── install-termux.sh          # One-line installer
 └── README.md
+```
+
+---
+
+## 🔌 API Reference
+
+### Chat
+```bash
+curl -X POST http://localhost:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"content": "list files"}'
+```
+
+### Text-to-Speech
+```bash
+# Get available voices
+curl http://localhost:8000/api/tts/voices
+
+# Generate speech
+curl -X POST http://localhost:8000/api/tts/speak \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello world", "voice": "en-US-AriaNeural"}'
+```
+
+### Grounding
+```bash
+curl -X POST http://localhost:8000/api/grounding/execute \
+  -H "Content-Type: application/json" \
+  -d '{"command": "ls -la", "timeout": 10}'
 ```
 
 ---
