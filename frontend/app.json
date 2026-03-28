@@ -1,0 +1,1 @@
+{\n  \"expo\": {\n    \"name\": \"Your App Name\",\n    \"slug\": \"your-app-slug\",\n    \"version\": \"1.0.0\",\n    \"sdkVersion\": \"45.0.0\",\n    \"platforms\": [\n      \"ios\",\n      \"android\"\n    ],\n    \"primaryColor\": \"#ffffff\",\n    \"icon\": \"./assets/icon.png\",\n    \"eas\": {\n      \"projectId\": \"your-eas-project-id\"\n    }\n  }\n}
